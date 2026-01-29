@@ -7,9 +7,9 @@ from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ForceReply
 
 # --- CONFIGURATION ---
-API_ID = 1234567  # Apna API ID yahan dalein
-API_HASH = "your_api_hash" # Apna API Hash yahan dalein
-BOT_TOKEN = "your_bot_token" # Apna Bot Token yahan dalein
+API_ID = 31693151  # Apna API ID yahan dalein
+API_HASH = "dc7207219c33e793afa1f4b2374138a4" # Apna API Hash yahan dalein
+BOT_TOKEN = "8328648106:AAGnXJSdP2Gc5av56wrNMbIX82wYO_LFRuA" # Apna Bot Token yahan dalein
 AUTH_KEY = "Mohit"
 
 app = Client("UploaderBot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
