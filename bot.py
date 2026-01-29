@@ -8,11 +8,13 @@ from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ForceReply
 from pyrogram.errors import FloodWait
 
-# Configuration (Colab ke Secrets se automatic uthayega)
+
+# --- CONFIGURATION (Colab Input se lega) ---
 API_ID = int(os.environ.get("API_ID"))
 API_HASH = os.environ.get("API_HASH")
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 AUTH_KEY = "Mohit"
+
 
 app = Client("UploaderBot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
