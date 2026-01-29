@@ -8,10 +8,10 @@ from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ForceReply
 from pyrogram.errors import FloodWait
 
-# --- CONFIGURATION ---
-API_ID = 1234567  # Apna ID daalein
-API_HASH = "your_api_hash"
-BOT_TOKEN = "your_bot_token"
+# Configuration (Colab ke Secrets se automatic uthayega)
+API_ID = int(os.environ.get("API_ID"))
+API_HASH = os.environ.get("API_HASH")
+BOT_TOKEN = os.environ.get("BOT_TOKEN")
 AUTH_KEY = "Mohit"
 
 app = Client("UploaderBot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
