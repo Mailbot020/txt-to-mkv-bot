@@ -3,29 +3,55 @@ import re
 import asyncio
 import subprocess
 import requests
+import time
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ForceReply
+from pyrogram.errors import FloodWait
 
 # --- CONFIGURATION ---
-API_ID = 31693151  # Apna API ID yahan dalein
-API_HASH = "dc7207219c33e793afa1f4b2374138a4" # Apna API Hash yahan dalein
-BOT_TOKEN = "8328648106:AAGnXJSdP2Gc5av56wrNMbIX82wYO_LFRuA" # Apna Bot Token yahan dalein
+API_ID = 1234567  # Apna ID daalein
+API_HASH = "your_api_hash"
+BOT_TOKEN = "your_bot_token"
 AUTH_KEY = "Mohit"
 
 app = Client("UploaderBot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
-# Temporary Storage for sessions
+# Temporary Storage
 user_data = {}
+
+# Progress Bar Function
+async def progress_bar(current, total, reply, start_time):
+    try:
+        now = time.time()
+        diff = now - start_time
+        if round(diff % 5.00) == 0 or current == total:
+            percentage = current * 100 / total
+            speed = current / diff
+            elapsed_time = round(diff)
+            eta = round((total - current) / speed)
+            
+            progress = "[{0}{1}]".format(
+                '●' * int(percentage / 10),
+                '○' * (10 - int(percentage / 10))
+            )
+            
+            tmp = f"**🚀 Processing...**\n\n" \
+                  f"**{progress}** {round(percentage, 2)}%\n" \
+                  f"**⚡ Speed:** {round(speed / 1024, 2)} KB/s\n" \
+                  f"**⏳ ETA:** {eta}s"
+            
+            await reply.edit_text(tmp)
+    except Exception:
+        pass
 
 @app.on_message(filters.command("start"))
 async def start(client, message):
-    text = (
+    await message.reply_text(
         "**Welcome to uploader bot**\n\n"
         "Use /ram to start downloading\n"
         "Use /stop to stop process\n\n"
         "For any type of help please contact **🚩Ram Bhakt🚩**"
     )
-    await message.reply_text(text)
 
 @app.on_message(filters.command("ram"))
 async def ram_cmd(client, message):
@@ -43,23 +69,23 @@ async def handle_replies(client, message):
     chat_id = message.chat.id
     if chat_id not in user_data: return
 
-    # Index Selection
+    # Step 1: Index selection
     if "index number" in message.reply_to_message.text:
         user_data[chat_id]["index"] = int(message.text)
-        await message.delete() # User reply hide
-        await message.reply_text("Please choose quality you want : 240, 360, 480, 720", reply_markup=ForceReply(True))
+        await message.delete() 
+        await message.reply_text("Please choose quality: 240, 360, 480, 720", reply_markup=ForceReply(True))
 
-    # Quality Selection
+    # Step 2: Quality selection
     elif "quality" in message.reply_to_message.text:
         user_data[chat_id]["quality"] = message.text
         await message.delete()
         await message.reply_text("Enter security key", reply_markup=ForceReply(True))
 
-    # Security Key & Execution
+    # Step 3: Key & Start
     elif "security key" in message.reply_to_message.text:
         await message.delete()
         if message.text == AUTH_KEY:
-            await message.reply_text("🚀 **Key Verified! Starting Extraction...**")
+            await message.reply_text("✅ Key Verified! Starting...")
             await start_processing(client, chat_id)
         else:
             await message.reply_text("❌ Wrong Key!")
@@ -68,42 +94,43 @@ async def start_processing(client, chat_id):
     data = user_data.get(chat_id)
     file_path = data["file"]
     start_idx = data["index"] - 1
-    quality = data["quality"]
-
+    
     with open(file_path, "r") as f:
         lines = f.readlines()
 
     for i in range(start_idx, len(lines)):
-        if chat_id not in user_data: # Stop check
-            await client.send_message(chat_id, "🚦 **Stopped** 🚦")
-            break
+        if chat_id not in user_data: break
             
         line = lines[i].strip()
         if not line or ":" not in line: continue
         
-        # Regex to extract Name and Link
-        parts = line.split(":", 1)
-        name = parts[0].strip()
-        link = re.findall(r'https?://[^\s"]+', parts[1])[0]
+        name_part, link_part = line.split(":", 1)
+        name = name_part.strip()
+        link = re.findall(r'https?://[^\s"]+', link_part)[0]
         
         caption = f"{name}\n\n**Index : {i+1}**"
-        prog_msg = await client.send_message(chat_id, f"📥 **Processing Index {i+1}:**\n`{name}`")
+        prog_msg = await client.send_message(chat_id, f"📥 **Preparing:** `{name}`")
 
         try:
             if ".m3u8" in link:
                 filename = f"{name}.mkv"
-                # FFmpeg command for m3u8 to mkv
+                # FFmpeg for high quality conversion
                 cmd = f'ffmpeg -i "{link}" -c copy -bsf:a aac_adtstoasc "{filename}" -y -loglevel quiet'
-                os.system(cmd)
+                subprocess.run(cmd, shell=True)
+                
                 if os.path.exists(filename):
-                    await client.send_video(chat_id, video=filename, caption=caption)
-                    os.remove(filename) # Clear server data
-            
+                    start_time = time.time()
+                    await client.send_video(
+                        chat_id, video=filename, caption=caption,
+                        progress=progress_bar, progress_args=(prog_msg, start_time)
+                    )
+                    os.remove(filename) # Server cleanup
+
             elif ".pdf" in link:
                 filename = f"{name}.pdf"
-                res = requests.get(link)
+                r = requests.get(link)
                 with open(filename, 'wb') as f_pdf:
-                    f_pdf.write(res.content)
+                    f_pdf.write(r.content)
                 await client.send_document(chat_id, document=filename, caption=caption)
                 os.remove(filename)
 
@@ -113,10 +140,11 @@ async def start_processing(client, chat_id):
         await prog_msg.delete()
 
     await client.send_message(chat_id, "🏁 **index out of range.... Task Finished!**")
-    if os.path.exists(file_path): os.remove(file_path) # Cleanup text file
+    if os.path.exists(file_path): os.remove(file_path)
 
 @app.on_message(filters.command("stop"))
 async def stop_process(client, message):
     user_data.pop(message.chat.id, None)
+    await message.reply_text("🚦 **Stopped** 🚦")
 
 app.run()
